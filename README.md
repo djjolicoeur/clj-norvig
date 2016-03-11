@@ -8,7 +8,10 @@ you want to follow along, the book can be found [here](http://www.amazon.com/Par
 
  * 1.11 Exercises complete in `src/clj-norvig/chap1.clj`.
  * 2.1 Complete in `src/clj-norvig/chap2.clj`
- * 2.2 In Progress
+ * 2.2 Complete in `src/clj-norvig/chap2.clj`
+ * 2.3 Complete in `src/clj-norvig/chap2.clj`
+ * 2.4 Complete in `src/clj-norvig/chap2.clj`
+ * 2.6 Examples complete in `src/clj-norvig/chap2.clj`
 
 ## License
 
