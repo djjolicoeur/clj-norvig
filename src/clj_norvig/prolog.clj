@@ -87,17 +87,17 @@
 
 (defn reuse-cons
   [x y x-y]
-  (if (and (= x (first x-y)) (= y (rest x-y)))
+  (if (and (= x (first x-y) (= y (rest x-y))))
     x-y
     (cons x y)))
 
 (defn atomic?
   [x]
-  (and x (not (seq? x))))
+  (or (and x (not (seq? x)))
+      (and (seq? x) (empty? x))))
 
 (defn subst-bindings
   [bindings x]
-  (println bindings x)
   (cond (= bindings fail) fail
         (= bindings no-bindings) x
         (and (variable? x) (lookup x bindings))
@@ -111,3 +111,7 @@
 (defn unifier
   [x y]
   (subst-bindings (unify x y) x))
+
+(defn t-unifier
+  [x y]
+  (subst-bindings (t-unify x y) x))
