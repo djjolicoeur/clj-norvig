@@ -107,7 +107,6 @@
                           (subst-bindings bindings (rest x))
                           x)))
 
-
 (defn unifier
   [x y]
   (subst-bindings (unify x y) x))
@@ -115,3 +114,39 @@
 (defn t-unifier
   [x y]
   (subst-bindings (t-unify x y) x))
+
+
+;; Prolog-in-Clj
+
+(defonce db (atom {}))
+
+(defn clear-db
+  []
+  (swap! db (constantly {})))
+
+(defn clear-predicate
+  [predicate]
+  (swap! db (fn [old] (dissoc old predicate))))
+
+
+(defn clause-head
+  [clause]
+  (first clause))
+
+(defn clause-body
+  [clause]
+  (rest clause))
+
+(defn get-clauses
+  [pred]
+  (get @db pred))
+
+(defn predicate
+  [relation]
+  (first relation))
+
+(defn add-clause
+  [] nil)
+
+(defn <-
+  [] nil)
