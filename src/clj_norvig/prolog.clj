@@ -1,4 +1,5 @@
-(ns clj-norvig.prolog)
+(ns clj-norvig.prolog
+  (:require [clojure.set :as set]))
 
 (def fail nil)
 
@@ -146,7 +147,95 @@
   (first relation))
 
 (defn add-clause
-  [] nil)
+  [clause]
+  (let [pred (predicate (clause-head clause))]
+    (assert (and (symbol? pred) (not (variable? pred))))
+    (swap! db (fn [old] (update old pred concat (list clause))))))
 
 (defn <-
-  [] nil)
+  [& clause]
+  (add-clause clause))
+
+(defn unique-find-anywhere-if
+  ([predicate tree found-so-far]
+   (if (atomic? tree)
+     (if (predicate tree)
+       (conj found-so-far tree)
+       found-so-far)
+     (recur predicate (first tree)
+            (unique-find-anywhere-if predicate (rest tree) found-so-far))))
+  ([predicate tree]
+   (unique-find-anywhere-if predicate tree #{})))
+
+(defn variables-in
+  [exp]
+  (unique-find-anywhere-if variable? exp))
+
+(defn rename-variables
+  [x]
+  (let [variables (variables-in x)
+        replace-with (into {} (map (fn [x] {x (gensym x)}) variables))
+        walk-fn (fn [var]
+                  (if-let [new-var (get replace-with var)]
+                    new-var
+                    var))]
+    (clojure.walk/postwalk walk-fn x)))
+
+
+(declare prove-all)
+
+(defn prove
+  [goal bindings]
+  (let [clauses (get-clauses (predicate goal))]
+    (mapcat (fn [clause]
+              (let [new-clause (rename-variables clause)]
+                (prove-all (clause-body new-clause)
+                           (t-unify goal (clause-head new-clause) bindings))))
+            clauses)))
+
+
+(defn prove-all
+  [goals bindings]
+  (cond
+    (= bindings fail) fail
+    (empty? goals) (list bindings)
+    :else
+    (mapcat (fn [goal-solution]
+              (prove-all (rest goals) goal-solution))
+            (prove (first goals) bindings))))
+
+(defn show-prolog-vars
+  [vars bindings]
+  (if (empty? vars) (println "Yes.")
+      (doseq [var vars]
+        (println (format " %s = %s;" var (subst-bindings bindings var))))))
+
+
+(defn show-prolog-solutions
+  [vars solutions]
+  (if (empty? solutions)
+    (println  "No.")
+    (doseq [solution solutions]
+      (show-prolog-vars vars solution))))
+
+(defn top-level-prove
+  [goals]
+  (show-prolog-solutions
+   (variables-in goals)
+   (prove-all goals no-bindings)))
+
+
+(defn ?- [& goals]
+  (top-level-prove goals))
+
+(defn load-db
+  "load fresh DB to test"
+  []
+  (clear-db)
+  (<- '(likes kim robin))
+  (<- '(likes sandy lee))
+  (<- '(likes sandy kim))
+  (<- '(likes robin cats))
+  (<- '(likes sandy ?x) '(likes ?x cats))
+  (<- '(likes kim ?x) '(likes ?x lee) '(likes ?x kim))
+  (<- '(likes ?x ?x)))
