@@ -119,8 +119,6 @@
 
 ;; Prolog-in-Clj
 
-;; (defonce db (atom {}))
-
 (defn mk-db
   []
   (atom {}))
