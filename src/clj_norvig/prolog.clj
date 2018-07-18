@@ -119,14 +119,18 @@
 
 ;; Prolog-in-Clj
 
-(defonce db (atom {}))
+;; (defonce db (atom {}))
+
+(defn mk-db
+  []
+  (atom {}))
 
 (defn clear-db
-  []
+  [db]
   (swap! db (constantly {})))
 
 (defn clear-predicate
-  [predicate]
+  [db predicate]
   (swap! db (fn [old] (dissoc old predicate))))
 
 
@@ -139,22 +143,22 @@
   (rest clause))
 
 (defn get-clauses
-  [pred]
-  (get @db pred))
+  [db pred]
+  (get db pred))
 
 (defn predicate
   [relation]
   (first relation))
 
 (defn add-clause
-  [clause]
+  [db clause]
   (let [pred (predicate (clause-head clause))]
     (assert (and (symbol? pred) (not (variable? pred))))
     (swap! db (fn [old] (update old pred concat (list clause))))))
 
 (defn <-
-  [& clause]
-  (add-clause clause))
+  [db & clause]
+  (add-clause db clause))
 
 (defn unique-find-anywhere-if
   ([predicate tree found-so-far]
@@ -185,24 +189,24 @@
 (declare prove-all)
 
 (defn prove
-  [goal bindings]
-  (let [clauses (get-clauses (predicate goal))]
+  [db goal bindings]
+  (let [clauses (get-clauses db (predicate goal))]
     (mapcat (fn [clause]
               (let [new-clause (rename-variables clause)]
-                (prove-all (clause-body new-clause)
+                (prove-all db (clause-body new-clause)
                            (t-unify goal (clause-head new-clause) bindings))))
             clauses)))
 
 
 (defn prove-all
-  [goals bindings]
+  [db goals bindings]
   (cond
     (= bindings fail) fail
     (empty? goals) (list bindings)
     :else
     (mapcat (fn [goal-solution]
-              (prove-all (rest goals) goal-solution))
-            (prove (first goals) bindings))))
+              (prove-all db (rest goals) goal-solution))
+            (prove db (first goals) bindings))))
 
 (defn show-prolog-vars
   [vars bindings]
@@ -210,6 +214,10 @@
       (doseq [var vars]
         (println (format " %s = %s;" var (subst-bindings bindings var))))))
 
+(defn replace-prolog-vars
+  [find bindings]
+  (if (empty? find) nil
+      (mapv  (partial subst-bindings bindings) find)))
 
 (defn show-prolog-solutions
   [vars solutions]
@@ -218,24 +226,41 @@
     (doseq [solution solutions]
       (show-prolog-vars vars solution))))
 
-(defn top-level-prove
-  [goals]
+(defn solve-prolog-solutions
+  [find solutions]
+  (if (empty? solutions) #{}
+      (->> (map (partial replace-prolog-vars find) solutions)
+           (filter identity)
+           (into #{}))))
+
+(defn top-level-show
+  [db goals]
   (show-prolog-solutions
    (variables-in goals)
-   (prove-all goals no-bindings)))
+   (prove-all db goals no-bindings)))
+
+(defn top-level-solve
+  [db find goals]
+  (solve-prolog-solutions
+   find
+   (prove-all db goals no-bindings)))
 
 
-(defn ?- [& goals]
-  (top-level-prove goals))
+(defn ?-show [db & goals]
+  (top-level-show @db goals))
+
+(defn ?-solve
+  [db find & goals]
+  (top-level-solve @db find goals))
 
 (defn load-db
   "load fresh DB to test"
-  []
-  (clear-db)
-  (<- '(likes kim robin))
-  (<- '(likes sandy lee))
-  (<- '(likes sandy kim))
-  (<- '(likes robin cats))
-  (<- '(likes sandy ?x) '(likes ?x cats))
-  (<- '(likes kim ?x) '(likes ?x lee) '(likes ?x kim))
-  (<- '(likes ?x ?x)))
+  [db]
+  (clear-db db)
+  (<- db '(likes kim robin))
+  (<- db '(likes sandy lee))
+  (<- db '(likes sandy kim))
+  (<- db '(likes robin cats))
+  (<- db '(likes sandy ?x) '(likes ?x cats))
+  (<- db '(likes kim ?x) '(likes ?x lee) '(likes ?x kim))
+  (<- db '(likes ?x ?x)))
